@@ -1,0 +1,24 @@
+---
+- name: Create linux users
+  hosts: linux
+  become: yes
+
+  tasks:
+    - name: create local users
+      user:
+        name: "{{ item }}"
+        password: "{{ 'changeme123$%^' | password_hash('sha512') }}"
+        state: present
+        createhome: yes
+      loop:
+        - nightmarionne
+        - mangle
+        - balloon_boy
+        - fredbear
+        - bidybab
+    
+    - name: add local admins to sudoers
+      command: usermod -aG sudo "{{ item }}"
+      loop:
+        - nightmarionne
+        - mangle
