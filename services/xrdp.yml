@@ -1,0 +1,48 @@
+---
+- name: Install XFCE and XRDP
+  hosts: all
+  become: yes
+  tasks:
+    # Update the box
+    - name: Update
+      apt:
+        update_cache: yes
+        
+    # Install the current XFCE Package, used for the desktop environment
+    - name: Install XFCE
+      package: 
+        name: xfce4
+        state: present
+      become: yes
+     
+    # Establish the desktop enviroment as XFCE
+    - name: Configure XFCE
+      command: echo "xfce4-session" > /home/{{ user }}/.xsession
+    
+    # Install XRPD
+    - name: Install XRDP
+      package:
+        name: xrdp
+        state: present
+      become: yes
+      
+    # Start the XRDP service so that it can be used
+    - name: Start Service
+      service: 
+        name: xrdp
+        state: started
+      become: yes
+      
+    # Enable the service so it starts on system boot
+    - name: Enable Service
+      service:
+        name: xrdp
+        enabled: yes
+      become: yes
+      
+    # Explicitly allow traffic through port 3389, used for RDP
+    - name: Allow Traffic
+      ufw:
+        rule: allow
+        port: 3389
+      become: yes

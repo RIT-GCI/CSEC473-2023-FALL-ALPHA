@@ -1,0 +1,273 @@
+---
+- name: Master WinSrv2016 Task List
+  hosts: winsrv_purple
+  tasks:
+
+  - name: Install .NET 4.8
+    win_shell: "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; (New-Object System.Net.WebClient).DownloadFile(\"https://go.microsoft.com/fwlink/?linkid=2088631\", \"$Env:Temp\\Net4.8.exe\"); & \"$Env:Temp\\Net4.8.exe\" /q /norestart"
+
+  - name: Reboot
+    win_reboot:
+
+  - name: Install Chocolatey
+    win_shell: "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+
+  - name: Install OpenSSH Service
+    win_chocolatey:
+      name: openssh
+      package_params: /SSHServerFeature
+      state: present
+    register: openssh
+
+      #- name: Reboot
+      #win_reboot:
+      #pre_reboot_delay: 10
+      #when: openssh.changed
+
+  - name: Change Hostname
+    win_hostname:
+      name: "backstage"
+    register: hostname
+
+  - name: Reboot
+    win_reboot:
+      pre_reboot_delay: 10
+    when: hostname.reboot_required
+
+  - name: Install Active Directory Services
+    win_feature: >
+      name=AD-Domain-Services
+      include_sub_features=yes
+      include_management_tools=yes
+      state=present
+
+  - name: Change Administrator Password
+    win_user:
+      name: Administrator
+      password: changeme1234%
+      state: present
+      update_password: always
+
+  - name: Create Domain
+    win_domain: >
+      dns_domain_name="team{{team_number}}.fnaf"
+      safe_mode_password="thisisatemp123$%^"
+    register: ad
+
+  - name: Reboot
+    win_reboot:
+      pre_reboot_delay: 20
+    when: ad.changed
+
+  - name: Set DC as DNS Server
+    win_dns_client:
+      adapter_names: '*'
+      ipv4_addresses:
+        - "127.0.0.1"
+
+      # Need to figure out how to add a subnet for the cloud network, half of these record entries will fail at the moment
+
+  - name: Add A Record 1/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"supply_closet\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.12\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 2/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"kitchen\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.11\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 3/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"dining_area\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.10\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 4/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"show_stage\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.13\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 5/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"backstage\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.12\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 6/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"hm_pirate_cove\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.14\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 7/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"east_hall\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.11\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 8/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"west_hall\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.10\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Create Reverse DNS Zone
+    win_shell: "Add-DnsServerPrimaryZone -NetworkID {{network_address}} -ReplicationScope Forest"
+    delegate_to: "{{srv_ip_address}}"
+    retries: 30
+    delay: 60
+    register: reversedns
+    until: reversedns is succeeded
+
+      # Need to figure out how to add a subnet for the cloud network, half of these record entries will fail at the moment
+
+  - name: Add PTR Record 1/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"12\" -ZoneName \"{{cloud_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"supply_closet.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 2/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"11\" -ZoneName \"{{cloud_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"kitchen.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 3/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"10\" -ZoneName \"{{cloud_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"dining_area.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 4/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"13\" -ZoneName \"{{local_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"show_stage.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 5/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"12\" -ZoneName \"{{local_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"backstage.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 6/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"14\" -ZoneName \"{{local_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"hm_pirate_cove.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 7/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"11\" -ZoneName \"{{local_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"east_hall.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 8/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"10\" -ZoneName \"{{local_addr_rev}}.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"west_hall.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Make GreyTeam Domain Admin user
+    win_domain_user:
+      name: greyteam
+      firstname: Anthony
+      display_name: Anthony
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+        - Domain Admins
+
+
+  - name: Create User 1/11
+    win_domain_user:
+      name: freddy
+      firstname: Freddy
+      surname: Fazbear
+      display_name: Freddy Fazbear
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+        - Domain Admins
+
+  - name: Create User 2/11
+    win_domain_user:
+      name: bonnie
+      firstname: Bonnie
+      display_name: Bonnie
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+        - Domain Admins
+
+  - name: Create User 3/11
+    win_domain_user:
+      name: foxy
+      firstname: Foxy
+      display_name: Foxy
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+        - Domain Admins
+
+  - name: Create User 4/11
+    win_domain_user:
+      name: chica
+      firstname: Chica
+      display_name: Chica
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 5/11
+    win_domain_user:
+      name: mrhippo
+      firstname: Mr.
+      surname: Hippo
+      display_name: Mr. Hippo
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 6/11
+    win_domain_user:
+      name: orville
+      firstname: Orville
+      surname: Elephant
+      display_name: Orville Elephant
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 7/11
+    win_domain_user:
+      name: happyfrog
+      firstname: Happy
+      surname: Frog
+      display_name: Happy Frog
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 8/11
+    win_domain_user:
+      name: pigpatch
+      firstname: Pigpatch
+      display_name: Pigpatch
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 9/11
+    win_domain_user:
+      name: nedd
+      firstname: Nedd
+      surname: Bear
+      display_name: Nedd Bear
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 10/11
+    win_domain_user:
+      name: elchip
+      firstname: El
+      surname: Chip
+      display_name: El Chip
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+
+  - name: Create User 11/11
+    win_domain_user:
+      name: parrot
+      firstname: Parrot
+      display_name: Parrot
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users

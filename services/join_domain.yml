@@ -1,0 +1,16 @@
+---
+- name: Join Linux Machines to Domain
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Install resolvconf
+      apt:
+        name: resolvconf
+        update_cache: yes
+        
+    - name: Add nameserver
+      command: echo "nameserver {{dc_ip}}" | sudo tee -a /etc/resolvconf/resolv.conf.d/head
+      become: yes
+      
+

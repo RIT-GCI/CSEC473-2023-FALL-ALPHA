@@ -1,0 +1,16 @@
+---
+- name: Make GreyTeam Domain Admin
+  hosts: winsrv_t1:winsrv_t2
+  tasks:
+
+  - name: Make GreyTeam Domain Admin user
+    win_domain_user:
+      name: greyteam
+      firstname: Anthony
+      display_name: Anthony
+      password: changeme123$%^
+      state: present
+      groups:
+        - Domain Users
+        - Domain Admins
+

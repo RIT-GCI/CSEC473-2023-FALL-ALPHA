@@ -1,0 +1,44 @@
+---
+- name: Deploy FTP server and create file
+  hosts: all  # Replace with the hostname or IP address of your FTP server
+  become: yes
+
+  tasks:
+    - name: Install vsftpd (FTP server)
+      apt:
+        name: vsftpd  # Replace with the appropriate package manager and package name for your system
+        state: present  # Install the package if not already installed
+      # Use "yum" for Red Hat-based systems or adjust for other package managers
+
+    - name: Ensure vsftpd is enabled and started
+      service:
+        name: vsftpd
+        state: started
+        enabled: yes
+
+    - name: Uncomment write_enable in vsftpd.conf
+      lineinfile:
+        path: /etc/vsftpd.conf
+        regexp: '^#?write_enable='
+        line: 'write_enable=YES'
+
+    - name: Restart vsftpd
+      service:
+        name: vsftpd
+        state: restarted
+
+    - name: Create FTP directory
+      file:
+        path: /home/scoring/ftp
+        state: directory
+        owner: scoring  # Set the owner to "scoring"
+        group: scoring  # Set the group to "scoring"
+        mode: '0755'   # Set the permissions as needed
+
+    - name: Create file with content
+      copy:
+        content: "i love genesee specialty creme ale"  # Content of the file
+        dest: /home/scoring/ftp/ftp_check.txt
+        owner: scoring  # Set the owner to "scoring"
+        group: scoring  # Set the group to "scoring"
+        mode: '0644'   # Set the permissions as needed

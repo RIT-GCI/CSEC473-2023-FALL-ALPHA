@@ -1,0 +1,105 @@
+---
+- name: Create LAMP stack
+  hosts: all
+  vars:
+    ansible_ssh_user: ubuntu
+    ansible_ssh_pass: ubuntu
+  become: yes
+
+  # I will be installing Apache2 as my web server software
+  tasks:
+    - name: install Apache2
+      apt:
+        name: apache2
+        update_cache: yes
+
+  # Edit default index.html with FNAF-themed webpage
+    - name: Copy custom index.html template
+      template:
+        # Source file with HTML
+        src: fnaf_index.html.j2
+        dest: /var/www/html/index.html
+
+  # Start the service!
+    - name: Start Apache2 service
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+  # Install MySQL Server with user (includes remote login)
+    - name: Installing MySQL and dependencies
+      apt:
+        name:
+          - mysql-server
+          - python3-mysqldb
+    - name: start and enable MySQL service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+    - name: creating mysql user
+      mysql_user:
+        name: admin 
+        password: password
+        priv: '*.*:ALL'
+        host: '%'
+        state: present
+    - name: creating database
+      mysql_db:
+        name: employees
+        state: present
+      
+    - name: Enable remote login to mysql
+      lineinfile:
+         path: /etc/mysql/mysql.conf.d/mysqld.cnf
+         regexp: '^bind-address'
+         line: 'bind-address = 0.0.0.0'
+         backup: yes
+      notify:
+         - Restart mysql
+
+  # This will restart the MySQL service
+  handlers:
+    - name: Restart mysql
+      service:
+        name: mysql
+        state: restarted
+
+  # Install PHP
+    - name: Install PHP and required modules
+      apt:
+        name:
+        - php
+        - libapache2-mod-php
+        - php-mysql
+        - php-curl
+        - php-gd
+        - php-xml
+        - php-mbstring
+        state: present
+
+  # Ensure that Apache2 is running properly (two-step process)
+    - name : Check Apache2 service status
+      service:
+        name: apache2
+        state: started
+        # This stores the output of the systemctl command
+      register: apache2_status
+
+  # Display the Apache2 status to make sure everything is working properly
+    - name : Display Apache2 service status
+      debug:
+        var: apache2_status
+
+  # Ensure that MySQL is running properly
+    - name: Check MySQL service status
+      service:
+        name: mysqld
+        state: started
+      register: mysql_status
+
+  # Display the MySQL status
+    - name: Display MySQL service status
+      debug:
+        var: mysql_status

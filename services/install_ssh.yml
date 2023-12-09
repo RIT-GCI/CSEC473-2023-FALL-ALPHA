@@ -1,0 +1,21 @@
+---
+- name: Configure Clients
+  hosts: supplycloset_purple
+  gather_facts: no
+  tasks:
+
+  - name: Install .NET 4.8
+    win_shell: "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; (New-Object System.Net.WebClient).DownloadFile(\"https://go.microsoft.com/fwlink/?linkid=2088631\", \"$Env:Temp\\Net4.8.exe\"); & \"$Env:Temp\\Net4.8.exe\" /q /norestart"
+
+  - name: Reboot
+    win_reboot:
+
+  - name: Install Chocolatey
+    win_shell: "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+
+  - name: Install OpenSSH Service
+    win_chocolatey:
+      name: openssh
+      package_params: /SSHServerFeature
+      state: present
+    register: openssh

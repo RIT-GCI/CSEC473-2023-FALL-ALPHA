@@ -1,0 +1,74 @@
+---
+- name: Set up and configure the mail server
+  hosts: all
+  vars:
+    # This variable is used to set the domain name in the postfix config file
+    myhostname: "teampurple.fanf"
+  tasks:
+  
+  # This block is used to install postfix
+  - name: Install Postfix
+    apt:
+      name: postfix
+      update_cache: yes
+      # Force apt is to make sure all the defaults are selected when downloading
+      force_apt_get: yes
+    # Continue as root
+    become: yes
+    
+  # This block is used to change the postfix config from the default to the updated one
+  - name: Change Postfix Configs
+    template:
+      # Uses the file stored in the templates section and replaces the default
+      src: templates/main.cf.j2
+      dest: /etc/postfix/main.cf
+    become: yes
+      
+  # This block is used to install dovecot and its additons
+  - name: Install Dovecot
+    apt:
+      # Installs all the packages needed for dovecot
+      pkg:
+      - dovecot-core
+      - dovecot-imapd
+      - mailutils
+      update_cache: yes
+      state: latest
+      force_apt_get: yes
+    become: yes
+    
+  # This section changes the default configs with the updated configs from the templates folder
+  - name: Change Dovecot Configs
+    template:
+      src: templates/10-mail.conf.j2
+      dest: /etc/dovecot/conf.d/10-mail.conf
+    become: yes
+      
+  # Used to restart postfix as its needed to start the process
+  - name: Restart Postfix
+    service:
+      name: postfix
+      state: restarted
+    become: yes
+      
+  # This is used to restart dovecot as its needed to start the process
+  - name: Restart Dovecot
+    service:
+      name: dovecot
+      state: restarted
+    become: yes
+    
+  # This enables postfix so that it can be automatically started if the system is restarted
+  - name: Enable Postfix
+    service:
+      name: postfix
+      enabled: yes
+    become: yes
+      
+  # This enables dovecot so that it can be automatically started if the system is restarted
+  - name: Enable Dovecot
+    service:
+      name: dovecot
+      enabled: yes
+    become: yes
+    

@@ -1,0 +1,78 @@
+---
+- name: Master WinSrv2016 Task List
+  hosts: winsrv_t1:winsrv_t2
+  tasks:
+  
+  - name: Add A Record 1/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"supply-closet\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.12\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 2/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"kitchen\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.11\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 3/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"dining-area\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{cloud_addr}}.10\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 4/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"show-stage\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.13\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 5/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"backstage\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.12\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 6/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"hm-pirate_cove\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.14\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 7/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"east-hall\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.11\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add A Record 8/8
+    win_shell: "Add-DnsServerResourceRecordA -Name \"west-hall\" -ZoneName \"team{{team_number}}.fnaf\" -AllowUpdateAny -IPv4Address \"{{local_addr}}.10\" -TimeToLive 02:00:00"
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Create Reverse DNS Zone
+    win_shell: "Add-DnsServerPrimaryZone -NetworkID {{network_address}} -ReplicationScope Forest"
+    delegate_to: "{{srv_ip_address}}"
+    retries: 30
+    delay: 60
+    register: reversedns
+    until: reversedns is succeeded
+
+      # Need to figure out how to add a subnet for the cloud network, half of these record entries will fail at the moment
+
+  - name: Add PTR Record 1/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"12\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"supply-closet.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 2/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"11\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"kitchen.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 3/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"10\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"dining-area.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 4/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"13\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"show_stage.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 5/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"12\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"backstage.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 6/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"14\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"hm-pirate-cove.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 7/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"11\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"east-hall.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"
+
+  - name: Add PTR Record 8/8
+    win_shell: "Add-DnsServerResourceRecordPtr -Name \"10\" -ZoneName \"0.0.10.in-addr.arpa\" -AllowUpdateAny -TimeToLive 02:00:00 -AgeRecord -PtrDomainName \"west-hall.team{{team_number}}.fnaf\""
+    delegate_to: "{{srv_ip_address}}"

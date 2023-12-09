@@ -1,0 +1,97 @@
+---
+- name: Configure Clients
+  hosts: supplycloset_purple
+  gather_facts: no
+  tasks:
+
+    - name: Set hostname
+      win_hostname:
+        name: supply-closet
+      register: hostname_result
+
+    - name: Disable Windows Firewall
+      win_firewall:
+        state: disabled
+        profiles:
+        - Domain
+        - Public
+        - Private
+      tags: disable_firewall
+
+    - name: Reboot the target
+      win_reboot:
+
+    - name: Change DNS Server
+      ansible.windows.win_dns_client:
+        adapter_names: '*'
+        dns_servers:
+        - "{{dns_server}}"
+
+    - name: Join AD Domain
+      win_domain_membership:
+        dns_domain_name: "{{domain}}"
+        domain_admin_user: "greyteam@{{domain}}"
+        domain_admin_password: changeme123$%^
+        state: domain
+      register: domain_state
+
+    - name: Reboot the target
+      win_reboot:
+
+    - name: Enable RDP
+      win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server
+        name: fDenyTSConnections
+        data: 0
+        type: dword
+
+    - name: Restart RDP
+      win_shell: Restart-Service -Name TermService -Force
+
+    - name: Create GreyTeam user
+      win_user:
+        name: greyteam
+        password: changeme123$%^
+        groups: Administrators
+        state: present
+      register: user_result
+
+    - name: Create User 1/5
+      win_user: 
+        name: nightmarionne
+        password: changeme123$%^
+        groups: Administrators
+        state: present
+      register: user_result
+
+    - name: Create User 2/5
+      win_user: 
+        name: mangle
+        password: changeme123$%^
+        groups: Administrators
+        state: present
+      register: user_result
+
+    - name: Create User 3/5
+      win_user: 
+        name: balloon_boy
+        password: changeme123$%^
+        groups: Users
+        state: present
+      register: user_result
+
+    - name: Create User 4/5
+      win_user: 
+        name: fredbear
+        password: changeme123$%^
+        groups: Users
+        state: present
+      register: user_result
+
+    - name: Create User 5/5
+      win_user: 
+        name: bidybab
+        password: changeme123$%^
+        groups: Users
+        state: present
+      register: user_result
